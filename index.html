@@ -294,24 +294,30 @@
     }
 
     function saveAndRender(specificTeamKey) {
-        // 1. 乐观更新
+        // 1. 本地立即更新（为了操作流畅）
         renderHeader();
         if(specificTeamKey) renderList(specificTeamKey); 
         else { renderList('teamA'); renderList('teamB'); }
 
-        // 2. 防抖同步
+        // 2. 发送 POST 请求写入云端
         if (syncTimer) clearTimeout(syncTimer);
         syncTimer = setTimeout(() => {
-            // 确保不发送 _id 字段，防止后端报错
+            // 深拷贝一份数据
             const payload = JSON.parse(JSON.stringify(gameData));
+            // 【双重保险】前端也删掉 _id 再发
             if(payload._id) delete payload._id;
 
             fetch(API_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
-            }).catch(err => console.error("同步失败", err));
-        }, 500);
+            })
+            .then(res => res.json())
+            .then(res => {
+                console.log("云端保存结果:", res);
+            })
+            .catch(err => console.error("同步失败", err));
+        }, 500); // 500毫秒防抖
     }
 
     // --- 界面逻辑 ---
